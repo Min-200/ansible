@@ -1,0 +1,278 @@
+常用模块使用
+(1)、setup
+
+## 用来查看远程主机的一些基本信息
+
+# ansible storm_cluster -m setup
+
+(2)、ping
+
+## 用来测试远程主机的运行状态
+
+# ansible storm_cluster -m ping
+
+(3)、file
+
+## 设置文件的属性
+
+相关选项如下：
+
+force：需要在两种情况下强制创建软链接，一种是源文件不存在，但之后会建立的情况下；另一种是目标软链接已存在，需要先取消之前的软链，然后创建新的软链，有两个选项：yes|no
+
+group：定义文件/目录的属组
+
+mode：定义文件/目录的权限
+
+owner：定义文件/目录的属主
+
+path：必选项，定义文件/目录的路径
+
+recurse：递归设置文件的属性，只对目录有效
+
+src：被链接的源文件路径，只应用于state=link的情况
+
+dest：被链接到的路径，只应用于state=link的情况
+
+state：
+
+       directory：如果目录不存在，就创建目录
+
+       file：即使文件不存在，也不会被创建
+
+       link：创建软链接
+
+       hard：创建硬链接
+
+       touch：如果文件不存在，则会创建一个新的文件，如果文件或目录已存在，则更新其最后修改时间
+
+       absent：删除目录、文件或者取消链接文件
+
+
+示例：
+
+## 远程文件符号链接创建
+
+# ansible storm_cluster -m file -a "src=/etc/resolv.conf dest=/tmp/resolv.conf state=link"
+
+
+## 远程文件信息查看
+
+# ansible storm_cluster -m command -a "ls –al /tmp/resolv.conf"
+
+
+
+## 远程文件符号链接删除
+
+# ansible storm_cluster -m file -a "path=/tmp/resolv.conf state=absent"
+
+
+## 远程文件信息查看
+
+# ansible storm_cluster -m command -a "ls -al /tmp/resolv.conf"
+
+
+(4)、copy
+
+## 复制文件到远程主机
+
+相关选项如下：
+
+backup：在覆盖之前，将源文件备份，备份文件包含时间信息。有两个选项：yes|no
+
+content：用于替代“src”，可以直接设定指定文件的值
+
+dest：必选项。要将源文件复制到的远程主机的绝对路径，如果源文件是一个目录，那么该路径也必须是个目录
+
+directory_mode：递归设定目录的权限，默认为系统默认权限
+
+force：如果目标主机包含该文件，但内容不同，如果设置为yes，则强制覆盖，如果为no，则只有当目标主机的目标位置不存在该文件时，才复制。默认为yes
+
+others：所有的file模块里的选项都可以在这里使用
+
+src：被复制到远程主机的本地文件，可以是绝对路径，也可以是相对路径。如果路径是一个目录，它将递归复制。在这种情况下，如果路径使用“/”来结尾，则只复制目录里的内容，如果没有使用“/”来结尾，则包含目录在内的整个内容全部复制，类似于rsync。
+
+
+## 将本地文件“/etc/ansible/ansible.cfg”复制到远程服务器
+
+# ansible storm_cluster -m copy -a "src=/etc/ansible/ansible.cfg dest=/tmp/ansible.cfg owner=root group=root mode=0644"
+
+
+## 远程文件信息查看
+
+# ansible storm_cluster -m command -a "ls -al /tmp/ansible.cfg"
+
+
+
+(5)、command
+
+## 在远程主机上执行命令
+
+相关选项如下：
+
+creates：一个文件名，当该文件存在，则该命令不执行
+
+free_form：要执行的linux指令
+
+chdir：在执行指令之前，先切换到该目录
+
+removes：一个文件名，当该文件不存在，则该选项不执行
+
+executable：切换shell来执行指令，该执行路径必须是一个绝对路径
+
+
+示例：
+
+# ansible storm_cluster -m command -a "uptime"
+
+
+
+(6)、shell
+
+## 切换到某个shell执行指定的指令，参数与command相同。
+
+与command不同的是，此模块可以支持命令管道，同时还有另一个模块也具备此功能：raw
+
+
+示例：
+
+## 先在本地创建一个SHELL脚本
+
+# vim /tmp/rocketzhang_test.sh
+
+#!/bin/sh
+
+date +%F_%H:%M:%S
+
+
+#chmod +x /tmp/rocketzhang_test.sh
+
+
+## 将创建的脚本文件分发到远程
+
+# ansible storm_cluster -m copy -a "src=/tmp/rocketzhang_test.sh dest=/tmp/rocketzhang_test.sh owner=root group=root mode=0755"
+
+
+## 远程执行
+
+# ansible storm_cluster -m shell -a "/tmp/rocketzhang_test.sh"
+
+
+
+
+
+
+
+命令执行
+
+执行命令的模块主要有两个,这两个模块都可以在远程主机上执行命令,但有一些区别:
+
+    command: 不支持环境变量,不支持重定向、管道符号
+    shell: 支持环境变量,支持重定向、管道符号
+
+所以,建议直接使用shell模块,少一些限制。
+
+
+
+文件管理
+上传文件(copy)
+
+常见用法,将仓库文件拷贝到remote host上,比如,将cloudera-cdh5的repo文件上传到remote host上
+
+- name: create cdh5 yum repo
+  copy: src=cloudera-cdh5.repo dest=/etc/yum.repos.d/cloudera-cdh5.repo backup=yes
+
+如果远程主机上文件已经存在了,copy模块将会覆盖远程主机上的文件,建议将backup设置为yes(默认为no),避免丢失数据。
+
+如果不想覆盖已经存在的文件, 可以将force设置为no,如下:
+
+- name: create cdh5 yum repo
+  copy: src=cloudera-cdh5.repo dest=/etc/yum.repos.d/cloudera-cdh5.repo force=no
+
+
+
+
+下载文件(fetch)
+
+fetch用于将远程主机上的文件下载到本地,比如将openstack-compute组里面的/etc/fstab下载到本地:
+
+➜ ansible -i hosts openstack-compute -m fetch -a "src=/etc/fstab dest=fstab"
+openstack-compute-1 | SUCCESS => {
+    "changed": false,
+    "checksum": "ba574926e4c2738f8651ed08e4622174a4c7f0c5",
+    "dest": "/private/tmp/ansible_tutorial/fstab/openstack-compute-1/etc/fstab",
+    "file": "/etc/fstab",
+    "md5sum": "e8bd4146fc1c71e5e560342a9458ceef"
+}
+openstack-compute-2 | SUCCESS => {
+    "changed": true,
+    "checksum": "a79cbd848d40c6219d7fc60f0523c9514ab2ca11",
+    "dest": "/private/tmp/ansible_tutorial/fstab/openstack-compute-2/etc/fstab",
+    "md5sum": "fcf6c3d8e770bf4d08ba6f0c7b4595bf",
+    "remote_checksum": "a79cbd848d40c6219d7fc60f0523c9514ab2ca11",
+    "remote_md5sum": null
+}
+
+
+
+
+
+
+ cron模块：
+
+    目的：在指定节点上定义一个计划任务，每隔3分钟到主控端更新一次时间
+
+    命令：ansible all -m cron -a 'name="custom job" minute=*/3 hour=* day=* month=* weekday=* job="/usr/sbin/ntpdate 172.16.254.139"'
+
+
+
+  group模块：
+
+    目的：在所有节点上创建一个组名为nolinux，gid为2014的组
+
+    命令：ansible all -m group -a 'gid=2014 name=nolinux'
+
+
+ user模块：
+
+    目的：在指定节点上创建一个用户名为nolinux，组为nolinux的用户
+
+    命令：ansible 10.1.1.113 -m user -a 'name=nolinux groups=nolinux state=present'
+
+ yum模块：
+
+    目的：在指定节点上安装 lrzsz 服务
+
+    命令：ansible all -m yum -a "state=present name=httpd"
+
+
+
+ service模块：
+
+    目的：启动指定节点上的 puppet 服务，并让其开机自启动
+
+    命令：ansible 10.1.1.113 -m service -a 'name=puppet state=restarted enabled=yes'
+
+
+ script模块：
+
+    目的：在指定节点上执行/root/a.sh脚本(该脚本是在ansible控制节点上的)
+
+    命令：ansible 10.1.1.113 -m script -a '/root/a.sh'
+
+
+
+ get_url模块：
+
+    目的：将http://10.1.1.116/favicon.ico文件下载到指定节点的/tmp目录下
+
+    命令：ansible 10.1.1.113 -m get_url -a 'url=http://10.1.1.116/favicon.ico dest=/tmp'
+
+
+ synchronize模块：
+
+    目的：将主控方/root/a目录推送到指定节点的/tmp目录下
+
+    命令：ansible 10.1.1.113 -m synchronize -a 'src=/root/a dest=/tmp/ compress=yes'
+
+
+ 
